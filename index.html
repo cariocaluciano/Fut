@@ -16,7 +16,7 @@ body {
 }
 h1 {
     color: #2c3e50;
-    text-align: center;
+    text-align: center;  
     font-size: 24px;
 }
 .info-box {
@@ -51,6 +51,9 @@ li {
     padding: 15px;
     border-radius: 5px;
     font-size: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 .modal {
     display: none;
@@ -114,6 +117,21 @@ input[type="text"], input[type="password"] {
 #opcoesAdm .btn {
     margin-top: 10px;
 }
+
+.btn-excluir {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 14px;
+}
+
+.btn-excluir:hover {
+    background-color: #c0392b;
+}
 </style>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -147,6 +165,7 @@ input[type="text"], input[type="password"] {
         <div class="modal-content">
             <span class="close">&times;</span>
             <h2>Adicionar Jogador</h2>
+            <input type="password" id="senhaAdicionarJogador" placeholder="Senha">
             <input type="text" id="nomeJogador" placeholder="Nome do Jogador">
             <button id="btnSalvarJogador" class="btn">Salvar</button>
         </div>
@@ -216,16 +235,36 @@ $(document).ready(() => {
     });
 
     btnSalvarJogador.click(() => {
+        const senha = $("#senhaAdicionarJogador").val();
         const nome = $("#nomeJogador").val();
-        if (nome) {
-            jogadores.push(nome);
-            atualizarListaJogadores();
-            atualizarValorCaixa();
-            $("#nomeJogador").val("");
-            modal.hide();
-            salvarJogadoresNoTrello();
+        if (senha && nome) {
+            // Verificar a senha antes de adicionar o jogador
+            verificarSenhaAdicionarJogador(senha, nome);
         }
     });
+
+    function verificarSenhaAdicionarJogador(senha, nome) {
+        $.ajax({
+            url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_SENHA_ADM_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
+            type: 'GET',
+            success: function(response) {
+                if (response.desc === senha) {
+                    jogadores.push(nome);
+                    atualizarListaJogadores();
+                    atualizarValorCaixa();
+                    $("#nomeJogador").val("");
+                    $("#senhaAdicionarJogador").val("");
+                    modal.hide();
+                    salvarJogadoresNoTrello();
+                } else {
+                    alert("Senha incorreta.");
+                }
+            },
+            error: function() {
+                alert("Erro ao verificar a senha. Tente novamente mais tarde.");
+            }
+        });
+    }
 
     btnVerificarSenha.click(() => {
         const senhaDigitada = $("#senhaAdm").val();
@@ -233,6 +272,10 @@ $(document).ready(() => {
     });
 
     btnExcluirJogadores.click(() => {
+        let valorAbater = jogadores.length * 15;
+        valorCaixa -= valorAbater;
+        spanValorCaixa.text(valorCaixa);
+        atualizarValorCaixaNoTrello();
         jogadores = [];
         atualizarListaJogadores();
         salvarJogadoresNoTrello();
@@ -240,7 +283,7 @@ $(document).ready(() => {
     });
 
     btnAbaterValorPelada.click(() => {
-        if (valorCaixa >= 190) {
+        if (valorCaixa) {
             valorCaixa -= 190;
             spanValorCaixa.text(valorCaixa);
             atualizarValorCaixaNoTrello();
@@ -259,7 +302,7 @@ $(document).ready(() => {
         const jogadoresEmbaralhados = embaralharArray([...jogadores]);
         const times = [];
         for (let i = 0; i < jogadoresEmbaralhados.length; i += 5) {
-            times.push(jogadoresEmbaralhados.slice(i, i + 5));
+            times.push(jogadoresEmbaralhados.slice(i, i + 5));  
         }
 
         timesGerados.empty();
@@ -270,11 +313,42 @@ $(document).ready(() => {
         });
     });
 
+    function excluirJogador(jogador) {
+        // Fazer GET para obter todos os jogadores do Trello
+        $.ajax({
+            url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_JOGADORES_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
+            type: 'GET',
+            success: function(response) {
+                if (response.desc) {
+                    // Remover o jogador da lista
+                    const jogadoresDaLista = response.desc.split(', ').filter(j => j !== jogador);
+                    // Atualizar a lista de jogadores
+                    jogadores = jogadoresDaLista;
+                    atualizarListaJogadores();
+                    valorCaixa -= 15; // Subtrai R$ 15 do valor em caixa
+                    spanValorCaixa.text(valorCaixa);
+                    atualizarValorCaixaNoTrello();
+                    // Fazer POST para atualizar a lista no Trello
+                    salvarJogadoresNoTrello();
+                    alert(`${jogador} foi excluído.`);
+                }
+            },
+            error: function() {
+                alert("Erro ao obter a lista de jogadores. Tente novamente mais tarde.");
+            }
+        });
+    }
+
     function atualizarListaJogadores() {
         listaJogadores.empty();
         jogadores.forEach(jogador => {
             const li = $("<li>").text(jogador);
+            li.append(` <button class="btn-excluir" data-jogador="${jogador}">Excluir</button>`);
             listaJogadores.append(li);
+        });
+        $(".btn-excluir").off("click").on("click", function() {
+            const jogadorParaExcluir = $(this).data("jogador");
+            excluirJogador(jogadorParaExcluir);
         });
     }
 
