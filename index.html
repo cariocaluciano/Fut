@@ -147,7 +147,7 @@ input[type="text"], input[type="password"] {
         
         <div class="info-box">
             <p>Valor em Caixa: R$ <span id="valorCaixa">0</span></p>
-            <p>Valor da Pelada: R$ 190</p>
+            <p>Valor da Pelada: R$ 195</p>
             <button id="btnAdm" class="btn btn-small">ADM</button>
         </div>
         
@@ -285,10 +285,10 @@ $(document).ready(() => {
 
     btnAbaterValorPelada.click(() => {
         if (valorCaixa) {
-            valorCaixa -= 190;
+            valorCaixa -= 195;
             spanValorCaixa.text(valorCaixa);
             atualizarValorCaixaNoTrello();
-            alert("Valor da pelada (R$ 190) foi abatido do caixa.");
+            alert("Valor da pelada (R$ 195) foi abatido do caixa.");
         } else {
             alert("Valor em caixa insuficiente para abater o valor da pelada.");
         }
