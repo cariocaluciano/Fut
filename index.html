@@ -185,6 +185,7 @@ input[type="text"], input[type="password"] {
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
@@ -311,30 +312,80 @@ $(document).ready(() => {
             div.html(`<h3>Time ${index + 1}</h3><ul>${time.map(jogador => `<li>${jogador}</li>`).join('')}</ul>`);
             timesGerados.append(div);
         });
+
+        // Adicionar botão para gerar PDF
+        const pdfBtn = $('<button id="btnGeneratePDF" class="btn">Gerar PDF</button>');
+        timesGerados.append(pdfBtn);
+
+        // Função para gerar PDF
+        pdfBtn.click(() => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            times.forEach((time, index) => {
+                doc.text(`Time ${index + 1}`, 10, 10 + index * 30);
+                time.forEach((jogador, j) => {
+                    doc.text(jogador, 10, 20 + index * 30 + j * 10);
+                });
+            });
+
+            doc.save('times.pdf');
+        });
+
+        // Adicionar botão para compartilhar no WhatsApp
+        const shareBtn = $('<button id="btnShare" class="btn">Compartilhar no WhatsApp</button>');
+        timesGerados.append(shareBtn);
+
+        // Função para compartilhar no WhatsApp
+        shareBtn.click(() => {
+            const timesText = times.map((time, index) => `Time ${index + 1}: ${time.join(', ')}`).join('\n');
+            const whatsappUrl = `https://api.whatsapp.com/send?text=Confira os times gerados!\n\n${encodeURIComponent(timesText)}`;
+            window.open(whatsappUrl, '_blank');
+        });
     });
 
     function excluirJogador(jogador) {
-        // Fazer GET para obter todos os jogadores do Trello
+        const senha = prompt("Digite a senha para excluir o jogador:");
+        if (!senha) {
+            alert("Senha não fornecida. A exclusão foi cancelada.");
+            return;
+        }
+
+        // Verificar a senha antes de excluir
         $.ajax({
-            url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_JOGADORES_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
+            url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_SENHA_ADM_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
             type: 'GET',
             success: function(response) {
-                if (response.desc) {
-                    // Remover o jogador da lista
-                    const jogadoresDaLista = response.desc.split(', ').filter(j => j !== jogador);
-                    // Atualizar a lista de jogadores
-                    jogadores = jogadoresDaLista;
-                    atualizarListaJogadores();
-                    valorCaixa -= 15; // Subtrai R$ 15 do valor em caixa
-                    spanValorCaixa.text(valorCaixa);
-                    atualizarValorCaixaNoTrello();
-                    // Fazer POST para atualizar a lista no Trello
-                    salvarJogadoresNoTrello();
-                    alert(`${jogador} foi excluído.`);
+                if (response.desc === senha) {
+                    // Fazer GET para obter todos os jogadores do Trello
+                    $.ajax({
+                        url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_JOGADORES_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
+                        type: 'GET',
+                        success: function(response) {
+                            if (response.desc) {
+                                // Remover o jogador da lista
+                                const jogadoresDaLista = response.desc.split(', ').filter(j => j !== jogador);
+                                // Atualizar a lista de jogadores
+                                jogadores = jogadoresDaLista;
+                                valorCaixa -= 15; // Subtrai R$ 15 do valor em caixa
+                                spanValorCaixa.text(valorCaixa);
+                                atualizarValorCaixaNoTrello();
+                                // Fazer POST para atualizar a lista no Trello
+                                salvarJogadoresNoTrello();
+                                atualizarListaJogadores(); // Atualiza a lista na interface
+                                alert(`${jogador} foi excluído.`);
+                            }
+                        },
+                        error: function() {
+                            alert("Erro ao obter a lista de jogadores. Tente novamente mais tarde.");
+                        }
+                    });
+                } else {
+                    alert("Senha incorreta. A exclusão foi cancelada.");
                 }
             },
             error: function() {
-                alert("Erro ao obter a lista de jogadores. Tente novamente mais tarde.");
+                alert("Erro ao verificar a senha. Tente novamente mais tarde.");
             }
         });
     }
