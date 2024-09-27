@@ -1,0 +1,359 @@
+<style> 
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f4f8;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+}
+.container {
+    max-width: 100%;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+h1 {
+    color: #2c3e50;
+    text-align: center;
+    font-size: 24px;
+}
+.info-box {
+    background-color: #ecf0f1;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+.btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+.btn:hover {
+    background-color: #2980b9;
+}
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+li {
+    background-color: #ecf0f1;
+    margin-bottom: 10px;
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 16px;
+}
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 10px;
+}
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.close:hover {
+    color: #000;
+}
+input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+#timesGerados div {
+    background-color: #ecf0f1;
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 5px;
+}
+#timesGerados h3 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+.btn-small {
+    padding: 5px 10px;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+#opcoesAdm {
+    margin-top: 15px;
+}
+
+#opcoesAdm .btn {
+    margin-top: 10px;
+}
+</style>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Pelada</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gerenciador de Pelada</h1>
+        
+        <div class="info-box">
+            <p>Valor em Caixa: R$ <span id="valorCaixa">0</span></p>
+            <p>Valor da Pelada: R$ 190</p>
+            <button id="btnAdm" class="btn btn-small">ADM</button>
+        </div>
+        
+        <button id="btnAdicionarJogador" class="btn">Adicionar Jogador</button>
+        
+        <h2>Lista de Jogadores</h2>
+        <ul id="listaJogadores"></ul>
+        
+        <button id="btnGerarTimes" class="btn">Gerar Times Aleatórios</button>
+        
+        <div id="timesGerados"></div>
+    </div>
+
+    <div id="modalAdicionarJogador" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Adicionar Jogador</h2>
+            <input type="text" id="nomeJogador" placeholder="Nome do Jogador">
+            <button id="btnSalvarJogador" class="btn">Salvar</button>
+        </div>
+    </div>
+
+    <div id="modalAdm" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Administrador</h2>
+            <input type="password" id="senhaAdm" placeholder="Senha">
+            <button id="btnVerificarSenha" class="btn">Verificar</button>
+            <div id="opcoesAdm" style="display: none;">
+                <button id="btnExcluirJogadores" class="btn">Excluir Todos os Jogadores</button>
+                <button id="btnAbaterValorPelada" class="btn">Abater Valor da Pelada</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+<script>
+let jogadores = [];
+let valorCaixa = 0;
+
+// Chaves em Base64
+const TRELLO_API_KEY_BASE64 = 'YWVkN2ZmZjExYjI0NjlhZTlhOWI0YjJiYTM0YjJiZjY=';
+const TRELLO_TOKEN_BASE64 = 'QVRUQWUwYmFlMTI0Y2RjNGRhMjY0ZjE5ODlmZWM1OWVmMDFkZjhiYWI1ZmZlMzZmYjQwY2NlNTFjMDQwYTIwMTM3NjExQTMyRkZBMA==';
+const CARD_ID_JOGADORES_BASE64 = 'NjZmNjk2YjAwMWYyYWQ2MWZiMTFjZDc5';
+const CARD_ID_CAIXA_BASE64 = 'NjZmNjk3MGJmNjc0YmY3MWUzYjdlOWU4';
+const CARD_ID_SENHA_ADM_BASE64 = 'NjZmNmE3MTQ3Yjc4Y2Q0NTlhODk3MTk2';
+
+// Função para desconverter da Base64
+function desconverterBase64(chaveBase64) {
+    return atob(chaveBase64);
+}
+
+$(document).ready(() => {
+    const modal = $("#modalAdicionarJogador");
+    const modalAdm = $("#modalAdm");
+    const btnAdicionarJogador = $("#btnAdicionarJogador");
+    const btnAdm = $("#btnAdm");
+    const spanFechar = $(".close");
+    const btnSalvarJogador = $("#btnSalvarJogador");
+    const listaJogadores = $("#listaJogadores");
+    const btnGerarTimes = $("#btnGerarTimes");
+    const timesGerados = $("#timesGerados");
+    const spanValorCaixa = $("#valorCaixa");
+    const btnVerificarSenha = $("#btnVerificarSenha");
+    const opcoesAdm = $("#opcoesAdm");
+    const btnExcluirJogadores = $("#btnExcluirJogadores");
+    const btnAbaterValorPelada = $("#btnAbaterValorPelada");
+
+    btnAdicionarJogador.click(() => modal.show());
+    btnAdm.click(() => modalAdm.show());
+    spanFechar.click(() => {
+        modal.hide();
+        modalAdm.hide();
+    });
+
+    $(window).click((event) => {
+        if ($(event.target).is(modal) || $(event.target).is(modalAdm)) {
+            modal.hide();
+            modalAdm.hide();
+        }
+    });
+
+    btnSalvarJogador.click(() => {
+        const nome = $("#nomeJogador").val();
+        if (nome) {
+            jogadores.push(nome);
+            atualizarListaJogadores();
+            atualizarValorCaixa();
+            $("#nomeJogador").val("");
+            modal.hide();
+            salvarJogadoresNoTrello();
+        }
+    });
+
+    btnVerificarSenha.click(() => {
+        const senhaDigitada = $("#senhaAdm").val();
+        verificarSenhaAdm(senhaDigitada);
+    });
+
+    btnExcluirJogadores.click(() => {
+        jogadores = [];
+        atualizarListaJogadores();
+        salvarJogadoresNoTrello();
+        alert("Todos os jogadores foram excluídos.");
+    });
+
+    btnAbaterValorPelada.click(() => {
+        if (valorCaixa >= 190) {
+            valorCaixa -= 190;
+            spanValorCaixa.text(valorCaixa);
+            atualizarValorCaixaNoTrello();
+            alert("Valor da pelada (R$ 190) foi abatido do caixa.");
+        } else {
+            alert("Valor em caixa insuficiente para abater o valor da pelada.");
+        }
+    });
+
+    btnGerarTimes.click(() => {
+        if (jogadores.length < 5) {
+            alert("É necessário ter pelo menos 5 jogadores para gerar times.");
+            return;
+        }
+
+        const jogadoresEmbaralhados = embaralharArray([...jogadores]);
+        const times = [];
+        for (let i = 0; i < jogadoresEmbaralhados.length; i += 5) {
+            times.push(jogadoresEmbaralhados.slice(i, i + 5));
+        }
+
+        timesGerados.empty();
+        times.forEach((time, index) => {
+            const div = $("<div>");
+            div.html(`<h3>Time ${index + 1}</h3><ul>${time.map(jogador => `<li>${jogador}</li>`).join('')}</ul>`);
+            timesGerados.append(div);
+        });
+    });
+
+    function atualizarListaJogadores() {
+        listaJogadores.empty();
+        jogadores.forEach(jogador => {
+            const li = $("<li>").text(jogador);
+            listaJogadores.append(li);
+        });
+    }
+
+    function atualizarValorCaixa() {
+        valorCaixa += 15;
+        spanValorCaixa.text(valorCaixa);
+        atualizarValorCaixaNoTrello();
+    }
+
+    function salvarJogadoresNoTrello() {
+        $.ajax({
+            url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_JOGADORES_BASE64)}/desc`,
+            type: 'PUT',
+            data: {
+                value: jogadores.join(', '),
+                key: desconverterBase64(TRELLO_API_KEY_BASE64),
+                token: desconverterBase64(TRELLO_TOKEN_BASE64)
+            }
+        });
+    }
+
+    function atualizarValorCaixaNoTrello() {
+        $.ajax({
+            url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_CAIXA_BASE64)}/desc`,
+            type: 'PUT',
+            data: {
+                value: `Valor em Caixa: R$ ${valorCaixa}`,
+                key: desconverterBase64(TRELLO_API_KEY_BASE64),
+                token: desconverterBase64(TRELLO_TOKEN_BASE64)
+            }
+        });
+    }
+
+    function verificarSenhaAdm(senhaDigitada) {
+        $.ajax({
+            url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_SENHA_ADM_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
+            type: 'GET',
+            success: function(response) {
+                if (response.desc === senhaDigitada) {
+                    opcoesAdm.show();
+                } else {
+                    alert("Senha incorreta.");
+                }
+            },
+            error: function() {
+                alert("Erro ao verificar a senha. Tente novamente mais tarde.");
+            }
+        });
+    }
+
+    function embaralharArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    // Carregar dados iniciais do Trello
+    $.ajax({
+        url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_JOGADORES_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
+        type: 'GET',
+        success: function(response) {
+            if (response.desc) {
+                jogadores = response.desc.split(', ');
+                atualizarListaJogadores();
+            }
+        }
+    });
+
+    $.ajax({
+        url: `https://api.trello.com/1/cards/${desconverterBase64(CARD_ID_CAIXA_BASE64)}?fields=desc&key=${desconverterBase64(TRELLO_API_KEY_BASE64)}&token=${desconverterBase64(TRELLO_TOKEN_BASE64)}`,
+        type: 'GET',
+        success: function(response) {
+            if (response.desc) {
+                valorCaixa = parseInt(response.desc.split('R$ ')[1]) || 0;
+                spanValorCaixa.text(valorCaixa);
+            }
+        }
+    });
+});
+</script>
